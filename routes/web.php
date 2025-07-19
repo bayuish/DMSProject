@@ -3,7 +3,9 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\LoginController; // Import controller Anda
 use App\Http\Controllers\HomeController; // Import HomeController
-use App\Http\Controllers\PeopleController; // Import PeopleController
+use App\Http\Controllers\PeopleController; // Pastikan ini ada
+use App\Http\Controllers\ProfileController; // Tambahkan ini
+use Illuminate\Support\Facades\Auth; // Tambahkan ini untuk Auth::check()
 
 /*
 |--------------------------------------------------------------------------
@@ -16,8 +18,14 @@ use App\Http\Controllers\PeopleController; // Import PeopleController
 |
 */
 
-// Route for the root URL, redirects to login page
+// Route for the root URL.
+// It checks authentication status and redirects accordingly.
 Route::get('/', function () {
+    if (Auth::check()) {
+        // If user is authenticated, redirect to home
+        return redirect()->route('home');
+    }
+    // If user is not authenticated, redirect to login
     return redirect()->route('login');
 });
 
@@ -37,9 +45,12 @@ Route::middleware(['auth'])->group(function () {
 
     // Route for the People page
     Route::get('/people', [PeopleController::class, 'index'])->name('people.index');
+    // Route to store new user from the People page
+    Route::post('/people', [PeopleController::class, 'store'])->name('people.store');
 
-    // Optional: If a logged-in user tries to access '/', redirect them to /home
-    Route::get('/', function () {
-        return redirect()->route('home');
-    });
+    // Rute untuk Profile
+    Route::get('/profile/edit', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update'); // Gunakan PUT untuk update
+
+    // Hapus Route::get('/') duplikat dari sini karena sudah ditangani di atas
 });

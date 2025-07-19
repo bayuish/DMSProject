@@ -93,6 +93,22 @@
             margin-left: 20px;
             cursor: pointer;
         }
+        /* New styles for dropdown menu under user avatar */
+        .header .user-profile .dropdown-menu {
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-top: 10px;
+        }
+        .header .user-profile .dropdown-item {
+            padding: 10px 15px;
+            color: #333;
+            font-weight: 500;
+        }
+        .header .user-profile .dropdown-item:hover {
+            background-color: #f0f2f5;
+            color: #1d9dcc;
+        }
+
 
         /* Main Layout */
         .main-wrapper {
@@ -440,25 +456,7 @@
 </head>
 <body>
     <!-- Header -->
-    <header class="header">
-        <div class="logo">
-            <i class="bi bi-google"></i> DMSProject
-        </div>
-        <div class="search-bar position-relative">
-            <span class="input-group-text"><i class="bi bi-search"></i></span>
-            <input type="text" class="form-control" placeholder="Search in Drive">
-        </div>
-        <div class="user-profile">
-            <div class="icon-group">
-                <i class="bi bi-bell"></i>
-                <i class="bi bi-gear"></i>
-                <i class="bi bi-question-circle"></i>
-            </div>
-            <div class="user-avatar">
-                {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
-            </div>
-        </div>
-    </header>
+    @include('components.navbar')
 
     <!-- Main Content Area -->
     <div class="main-wrapper">

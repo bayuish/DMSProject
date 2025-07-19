@@ -2,18 +2,18 @@
 
 namespace App\Http\Controllers\Auth;
 
-// Hapus baris ini: use App\Http\Controllers\Controller;
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Routing\Controller as BaseLaravelController; // Import Controller dasar Laravel
+use Illuminate\Support\Facades\Cookie; // Import Cookie facade
+use Illuminate\Support\Facades\Session; // Import Session facade
 
-// Ubah ini agar meng-extend BaseLaravelController
-class LoginController extends BaseLaravelController
+class LoginController extends Controller
 {
     /**
-     * Constructor to apply the guest middleware.
-     * Logged-in users cannot access the login page again.
+     * Constructor untuk menerapkan middleware 'guest'.
+     * Pengguna yang sudah login tidak dapat mengakses halaman login lagi.
      */
     public function __construct()
     {
@@ -21,7 +21,7 @@ class LoginController extends BaseLaravelController
     }
 
     /**
-     * Displays the login form.
+     * Menampilkan formulir login.
      *
      * @return \Illuminate\View\View
      */
@@ -31,7 +31,7 @@ class LoginController extends BaseLaravelController
     }
 
     /**
-     * Processes the login request.
+     * Memproses permintaan login.
      *
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\RedirectResponse
@@ -51,20 +51,46 @@ class LoginController extends BaseLaravelController
         }
 
         $request->session()->regenerate();
+
         return redirect()->intended('/home');
     }
 
     /**
-     * Processes the logout request.
+     * Memproses permintaan logout.
      *
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\RedirectResponse
      */
     public function destroy(Request $request)
     {
-        Auth::logout();
+        // Log out user dari guard 'web' secara eksplisit
+        Auth::guard('web')->logout();
+
+        // Invalidasi sesi saat ini
         $request->session()->invalidate();
+
+        // Regenerasi token CSRF
         $request->session()->regenerateToken();
-        return redirect('/');
+
+        // Hapus semua data sesi (lebih agresif)
+        $request->session()->flush();
+
+        // Hapus cookie "remember me" jika ada
+        $rememberMeCookieName = Auth::guard('web')->getRecallerName();
+        if ($request->hasCookie($rememberMeCookieName)) {
+            Cookie::queue(Cookie::forget($rememberMeCookieName));
+        }
+
+        // --- DEBUGGING LOGOUT ---
+        // Hentikan eksekusi di sini untuk melihat status setelah logout
+        dd(
+            'Auth::check() after logout:', Auth::check(),
+            'Session data after logout:', Session::all(),
+            'Remember Me Cookie value (should be null or empty):', Cookie::get($rememberMeCookieName)
+        );
+        // --- END DEBUGGING ---
+
+        // Redirect ke halaman login menggunakan URL langsung
+        return redirect('/login');
     }
 }
