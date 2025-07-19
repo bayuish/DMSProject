@@ -1,0 +1,77 @@
+version: '3.8' # Ini bisa dihapus jika menggunakan Docker Compose V2 atau lebih baru
+
+services:
+  # Nginx Web Server
+  nginx:
+    image: nginx:stable-alpine
+    container_name: laravel_nginx
+    ports:
+      - "80:80" # Akses aplikasi Laravel Anda di http://localhost
+    volumes:
+      - .:/var/www/html # Mount folder proyek Laravel Anda ke dalam container Nginx
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf # Mount file konfigurasi Nginx
+    depends_on:
+      app:
+        condition: service_started # Nginx hanya perlu memastikan PHP-FPM sudah jalan
+    restart: always # Pastikan kontainer ini selalu aktif
+
+  # PHP-FPM Service (untuk menjalankan aplikasi Laravel)
+  app:
+    build:
+      context: . # Konteks build adalah direktori saat ini (root proyek)
+      dockerfile: Dockerfile # Gunakan Dockerfile yang ada di root proyek
+    container_name: laravel_app
+    volumes:
+      - .:/var/www/html # Mount folder proyek Laravel Anda ke dalam container aplikasi
+    environment:
+      # Variabel environment ini akan tersedia di dalam kontainer 'app'
+      # dan digunakan oleh Laravel untuk koneksi database.
+      DB_CONNECTION: mysql
+      DB_HOST: mysql # PENTING: Nama service MySQL di docker-compose
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-laravel_docker} # Mengambil dari .env, default: laravel_docker
+      DB_USERNAME: ${DB_USERNAME:-root} # Mengambil dari .env, default: root
+      DB_PASSWORD: ${DB_PASSWORD:-} # Mengambil dari .env, default: kosong
+    depends_on:
+      mysql:
+        condition: service_healthy # App akan menunggu MySQL sehat sebelum memulai
+    restart: always # Pastikan kontainer ini selalu aktif
+
+  # MySQL Database Service
+  mysql:
+    image: mysql:8.0 # Anda bisa menggunakan versi lain seperti mysql:5.7
+    container_name: laravel_mysql
+    ports:
+      - "33061:3306" # Port ini opsional, untuk akses MySQL dari host (misal: DBeaver, HeidiSQL)
+    environment:
+      # Variabel environment untuk konfigurasi MySQL.
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-} # Ini akan mengambil password dari .env
+      MYSQL_DATABASE: ${DB_DATABASE:-laravel_docker}
+      # HAPUS BARIS INI: MYSQL_ALLOW_EMPTY_PASSWORD: "1"
+    volumes:
+      - dbdata:/var/lib/mysql # Volume untuk menyimpan data database secara persisten
+    healthcheck: # Healthcheck untuk memastikan MySQL benar-benar siap
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u$$MYSQL_USERNAME", "-p$$MYSQL_PASSWORD"] # Menggunakan kredensial
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s # Beri waktu MySQL untuk benar-benar memulai
+    restart: always # Pastikan kontainer ini selalu aktif
+
+  # phpMyAdmin Service (Alat manajemen database berbasis web)
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: laravel_phpmyadmin
+    ports:
+      - "8080:80" # Akses phpMyAdmin di http://localhost:8080
+    environment:
+      PMA_HOST: mysql # Nama service MySQL yang akan dihubungkan oleh phpMyAdmin
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-} # Menggunakan password root MySQL yang sama
+    depends_on:
+      mysql:
+        condition: service_healthy # phpMyAdmin akan menunggu MySQL sehat
+    restart: always # Pastikan kontainer ini selalu aktif
+
+volumes:
+  # Definisi volume untuk data MySQL agar data tidak hilang saat kontainer di-restart/dihapus
+  dbdata:
